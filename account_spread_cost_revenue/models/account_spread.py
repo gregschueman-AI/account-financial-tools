@@ -600,8 +600,14 @@ class AccountSpread(models.Model):
     @api.depends("debit_account_id.active", "credit_account_id.active")
     def _compute_archived_accounts(self):
         for spread in self:
-            spread.is_debit_account_archived = not spread.debit_account_id.active
-            spread.is_credit_account_archived = not spread.credit_account_id.active
+            debit_account = spread.debit_account_id
+            credit_account = spread.credit_account_id
+            spread.is_debit_account_archived = bool(
+                debit_account and not debit_account.active
+            )
+            spread.is_credit_account_archived = bool(
+                credit_account and not credit_account.active
+            )
 
     def open_posted_view(self):
         action_name = "account_spread_cost_revenue.action_account_moves_all_spread"

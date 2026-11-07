@@ -615,6 +615,26 @@ class TestComputeSpreadBoard(common.TransactionCase):
         self.assertTrue(self.spread.is_credit_account_archived)
         self.assertFalse(self.spread.is_debit_account_archived)
 
+    def test_17c_empty_account_is_not_archived(self):
+        # an account that is not set yet (e.g. a new spread being edited)
+        # is not an archived account
+        spread = self.env["account.spread"].new(
+            {
+                "name": "test",
+                "invoice_type": "in_invoice",
+                "debit_account_id": False,
+                "credit_account_id": False,
+            }
+        )
+        self.assertFalse(spread.debit_account_id)
+        self.assertFalse(spread.credit_account_id)
+        self.assertFalse(spread.is_debit_account_archived)
+        self.assertFalse(spread.is_credit_account_archived)
+        self.expense_account.active = False
+        spread.credit_account_id = self.expense_account
+        self.assertFalse(spread.is_debit_account_archived)
+        self.assertTrue(spread.is_credit_account_archived)
+
     @mute_logger("odoo.models", "odoo.sql_db", "odoo.models.unlink")
     def test_18_supplier_invoice(self):
         # spread date set
