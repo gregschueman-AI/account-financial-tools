@@ -527,26 +527,24 @@ class AccountSpread(models.Model):
 
     def _message_post_unlink_invoice_line(self):
         for spread in self:
-            inv_link = (
-                f"<a href=# data-oe-model=account.move "
-                f"data-oe-id={spread.invoice_id.id}>{self.env._('Invoice')}</a>"
-            )
+            inv_link = Markup(
+                "<a href=# data-oe-model=account.move data-oe-id=%s>%s</a>"
+            ) % (spread.invoice_id.id, self.env._("Invoice"))
             msg_body = self.env._(
                 "Unlinked invoice line '%(spread_line_name)s' (view %(inv_link)s).",
                 spread_line_name=spread.invoice_line_id.name,
                 inv_link=inv_link,
             )
-            spread.message_post(body=Markup(msg_body))
-            spread_link = (
-                f"<a href=# data-oe-model=account.spread "
-                f"data-oe-id={spread.id}>{self.env._('Spread')}</a>"
-            )
+            spread.message_post(body=msg_body)
+            spread_link = Markup(
+                "<a href=# data-oe-model=account.spread data-oe-id=%s>%s</a>"
+            ) % (spread.id, self.env._("Spread"))
             msg_body = self.env._(
                 "Unlinked '%(spread_link)s' (invoice line %(inv_line)s).",
                 spread_link=spread_link,
                 inv_line=spread.invoice_line_id.name,
             )
-            spread.invoice_id.message_post(body=Markup(msg_body))
+            spread.invoice_id.message_post(body=msg_body)
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_linked_or_posted(self):
