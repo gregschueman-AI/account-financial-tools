@@ -1,7 +1,7 @@
 # Copyright 2016-2020 Onestein (<https://www.onestein.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -30,13 +30,14 @@ class AccountInvoiceSpreadLine(models.Model):
             created_moves = grouped_lines[spread]._create_moves()
             spread._post_spread_moves(created_moves)
             if created_moves:
-                post_msg = self.env._("Created move(s) ")
-                post_msg += ", ".join(
-                    f"<a href=# data-oe-model=account.move data-oe-id={move.id}"
-                    f">{move.name}</a>"
-                    for move in created_moves
+                move_link = Markup(
+                    "<a href=# data-oe-model=account.move data-oe-id=%s>%s</a>"
                 )
-                spread.message_post(body=Markup(post_msg))
+                move_links = Markup(", ").join(
+                    move_link % (move.id, move.name) for move in created_moves
+                )
+                post_msg = escape(self.env._("Created move(s) ")) + move_links
+                spread.message_post(body=post_msg)
 
     def create_move(self):
         """Button to manually create a move from a spread line entry."""

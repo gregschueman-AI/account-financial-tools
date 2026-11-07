@@ -213,7 +213,7 @@ class AccountSpread(models.Model):
     @api.depends("unposted_amount")
     def _compute_all_posted(self):
         for spread in self:
-            rounding = self.currency_id.rounding
+            rounding = spread.currency_id.rounding
             unposted = spread.unposted_amount
             spread.all_posted = float_is_zero(unposted, precision_rounding=rounding)
 
@@ -527,26 +527,24 @@ class AccountSpread(models.Model):
 
     def _message_post_unlink_invoice_line(self):
         for spread in self:
-            inv_link = (
-                f"<a href=# data-oe-model=account.move "
-                f"data-oe-id={spread.invoice_id.id}>{self.env._('Invoice')}</a>"
-            )
+            inv_link = Markup(
+                "<a href=# data-oe-model=account.move data-oe-id=%s>%s</a>"
+            ) % (spread.invoice_id.id, self.env._("Invoice"))
             msg_body = self.env._(
                 "Unlinked invoice line '%(spread_line_name)s' (view %(inv_link)s).",
                 spread_line_name=spread.invoice_line_id.name,
                 inv_link=inv_link,
             )
-            spread.message_post(body=Markup(msg_body))
-            spread_link = (
-                f"<a href=# data-oe-model=account.spread "
-                f"data-oe-id={spread.id}>{self.env._('Spread')}</a>"
-            )
+            spread.message_post(body=msg_body)
+            spread_link = Markup(
+                "<a href=# data-oe-model=account.spread data-oe-id=%s>%s</a>"
+            ) % (spread.id, self.env._("Spread"))
             msg_body = self.env._(
                 "Unlinked '%(spread_link)s' (invoice line %(inv_line)s).",
                 spread_link=spread_link,
                 inv_line=spread.invoice_line_id.name,
             )
-            spread.invoice_id.message_post(body=Markup(msg_body))
+            spread.invoice_id.message_post(body=msg_body)
 
     @api.ondelete(at_uninstall=False)
     def _unlink_except_linked_or_posted(self):
@@ -602,8 +600,14 @@ class AccountSpread(models.Model):
     @api.depends("debit_account_id.active", "credit_account_id.active")
     def _compute_archived_accounts(self):
         for spread in self:
-            spread.is_debit_account_archived = not spread.debit_account_id.active
-            spread.is_credit_account_archived = not spread.credit_account_id.active
+            debit_account = spread.debit_account_id
+            credit_account = spread.credit_account_id
+            spread.is_debit_account_archived = bool(
+                debit_account and not debit_account.active
+            )
+            spread.is_credit_account_archived = bool(
+                credit_account and not credit_account.active
+            )
 
     def open_posted_view(self):
         action_name = "account_spread_cost_revenue.action_account_moves_all_spread"

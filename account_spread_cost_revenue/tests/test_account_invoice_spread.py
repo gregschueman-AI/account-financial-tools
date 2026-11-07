@@ -797,3 +797,34 @@ class TestAccountInvoiceSpread(common.TransactionCase):
         reversal = move_reversal.reverse_moves()
         refund = self.env["account.move"].browse(reversal["res_id"])
         self.assertFalse(refund.invoice_line_ids.mapped("spread_id"))
+
+    def test_16_unlink_invoice_line_message_escaped(self):
+        self.vendor_bill_line.name = "<b>x</b>"
+        self.vendor_bill_line.spread_id = self.spread
+        self.spread.action_unlink_invoice_line()
+
+        for record, link_model in (
+            (self.spread, "account.move"),
+            (self.vendor_bill, "account.spread"),
+        ):
+            message = record.message_ids.filtered(
+                lambda m: "Unlinked" in (m.body or "")
+            )
+            self.assertEqual(len(message), 1)
+            body = str(message.body)
+            self.assertIn("&lt;b&gt;x&lt;/b&gt;", body)
+            self.assertNotIn("<b>x</b>", body)
+            self.assertIn("<a ", body)
+            self.assertIn(link_model, body)
+
+    def test_17_create_move_message_link(self):
+        self.spread.compute_spread_board()
+        line = self.spread.line_ids[0]
+        line.create_move()
+        message = self.spread.message_ids.filtered(
+            lambda m: "Created move(s)" in (m.body or "")
+        )
+        self.assertEqual(len(message), 1)
+        body = str(message.body)
+        self.assertIn("<a ", body)
+        self.assertIn(f">{line.move_id.name}</a>", body)
