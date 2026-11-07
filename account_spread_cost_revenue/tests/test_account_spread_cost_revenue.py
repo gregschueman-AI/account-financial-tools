@@ -351,3 +351,26 @@ class TestAccountSpreadCostRevenue(common.TransactionCase):
         self.assertFalse(spread.display_create_all_moves)
         self.assertTrue(spread.display_recompute_buttons)
         self.assertTrue(spread.display_move_line_auto_post)
+
+    def test_15_compute_all_posted_multi(self):
+        # spreads in different currencies, computed together
+        company_currency = self.env.company.currency_id
+        other_currency = self.env.ref("base.EUR")
+        if other_currency == company_currency:
+            other_currency = self.env.ref("base.USD")
+        other_currency.active = True
+        spreads = self.env["account.spread"].create(
+            [
+                {
+                    "name": f"test {currency.name}",
+                    "invoice_type": "out_invoice",
+                    "debit_account_id": self.debit_account.id,
+                    "credit_account_id": self.credit_account.id,
+                    "currency_id": currency.id,
+                }
+                for currency in (company_currency, other_currency)
+            ]
+        )
+        self.assertEqual(len(spreads.currency_id), 2)
+        spreads._compute_all_posted()
+        self.assertEqual(spreads.mapped("all_posted"), [True, True])
